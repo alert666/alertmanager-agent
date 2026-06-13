@@ -1,0 +1,23 @@
+﻿grpc:
+  tls:
+    caFile: D:\Data\git\alert666\alertmanager-agent\certs\ca.crt
+    certFile: D:\Data\git\alert666\alertmanager-agent\certs\client.crt
+    keyFile: D:\Data\git\alert666\alertmanager-agent\certs\client.key
+
+log:
+  # encoder: console
+  encoder: json
+  level: debug
+
+timeZone: Asia/Shanghai
+
+agent:
+  serverAddr: "localhost:50051"
+  clusterID: "beijing"
+
+kube:
+  # Namespace where alertmanager resources are deployed.
+  namespace: "monitoring"
+  # Name of the Kubernetes Secret that stores the alertmanager configuration.
+  alertmanagerSecretName: "alertmanager-main"
+
