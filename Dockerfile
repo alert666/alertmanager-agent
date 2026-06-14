@@ -1,7 +1,7 @@
-ARG GO_VERSION=1.25.9
+ARG GO_VERSION=1.26.4
 FROM registry.cn-beijing.aliyuncs.com/qqlx/golang:${GO_VERSION}-alpine-otel AS builder
 
-ARG MAIN_PATH=cmd/apiserver/main.go
+ARG MAIN_PATH=main.go
 WORKDIR /app
 
 # 提前复制 go.mod 和 go.sum，以利用缓存
@@ -20,9 +20,9 @@ COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     export GOPROXY=https://goproxy.cn,direct && \
-    otel go build -o apiserver -ldflags="-s -w" ${MAIN_PATH}
+    otel go build -o alertmanager-agent -ldflags="-s -w" ${MAIN_PATH}
 
 FROM registry.cn-beijing.aliyuncs.com/qqlx/alpine:3.17
 WORKDIR /app
-COPY --from=builder /app/apiserver .
-ENTRYPOINT ["./apiserver"]
+COPY --from=builder /app/alertmanager-agent .
+ENTRYPOINT ["./alertmanager-agent"]
