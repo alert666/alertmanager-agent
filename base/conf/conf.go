@@ -15,8 +15,8 @@ const (
 	defaultLogEncoder = "console"
 )
 
-// LoadConfig loads configuration from the given YAML file path.
-func LoadConfig(configPath string) error {
+	// LoadConfig loads configuration from the given YAML file path.
+	func LoadConfig(configPath string) error {
 	_, err := os.Stat(configPath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("configuration file %s does not exist", configPath)
@@ -128,6 +128,15 @@ func GetAgentVersion() string {
 		}
 	}
 	return "unknow"
+}
+
+// GetAgentHealthPort returns the port for the Kubernetes health HTTP server.
+func GetAgentHealthPort() int {
+	port := viper.GetInt("agent.healthPort")
+	if port <= 0 {
+		port = 9090
+	}
+	return port
 }
 
 // GetGrpcTLSCertFile returns the gRPC mTLS client certificate file path.

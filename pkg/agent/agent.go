@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 		"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -198,6 +199,14 @@ func (a *Agent) Stop() error {
 	}
 	zap.L().Info("agent stopped")
 	return nil
+}
+
+// IsReady reports whether the gRPC connection to the api-server is healthy.
+func (a *Agent) IsReady() bool {
+	if a.conn == nil {
+		return false
+	}
+	return a.conn.GetState() == connectivity.Ready
 }
 
 // handleCommand dispatches a command to the appropriate handler.

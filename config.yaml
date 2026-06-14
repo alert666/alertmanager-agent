@@ -14,6 +14,7 @@ timeZone: Asia/Shanghai
 agent:
   serverAddr: "localhost:50051"
   clusterID: "beijing"
+  healthPort: 9090
 
 kube:
   # Namespace where alertmanager resources are deployed.

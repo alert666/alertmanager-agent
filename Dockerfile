@@ -26,3 +26,4 @@ FROM registry.cn-beijing.aliyuncs.com/qqlx/alpine:3.17
 WORKDIR /app
 COPY --from=builder /app/alertmanager-agent .
 ENTRYPOINT ["./alertmanager-agent"]
+EXPOSE 8080

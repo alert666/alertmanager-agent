@@ -1,0 +1,135 @@
+# 应用程序配置文件 ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-agent-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    grpc:
+      tls:
+        caFile: /app/certs/ca.crt
+        certFile: /app/certs/client.crt
+        keyFile: /app/certs/client.key
+
+    log:
+      encoder: json
+
+    timeZone: Asia/Shanghai
+
+    agent:
+      serverAddr: alertmanager-api-server-addr:50051
+      clusterID: cn-henan-2
+      healthPort: 8080
+
+    kube:
+      namespace: "monitoring"
+      alertmanagerSecretName: "alertmanager-main"
+
+---
+# RBAC 授权：创建服务账户与权限，用于获取和修改 Secret
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alertmanager-agent-sa
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alertmanager-secret-manager-role
+  namespace: monitoring
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["alertmanager-main"]
+  verbs: ["get", "watch", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alertmanager-agent-rb
+  namespace: monitoring
+subjects:
+- kind: ServiceAccount
+  name: alertmanager-agent-sa
+  namespace: monitoring
+roleRef:
+  kind: Role
+  name: alertmanager-secret-manager-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Deployment 部署定义
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-agent
+  namespace: monitoring
+  labels:
+    app: alertmanager-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager-agent
+  template:
+    metadata:
+      labels:
+        app: alertmanager-agent
+    spec:
+      # 关键：绑定上面创建的、拥有 Secret 读写权限的 ServiceAccount
+      serviceAccountName: alertmanager-agent-sa
+      containers:
+      - name: agent
+        image: registry.cn-beijing.aliyuncs.com/qqlx/alertmanager-agent:main-2626ff6-20260614-124337
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: health
+          containerPort: 8080
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # 容器内挂载路径
+        volumeMounts:
+        # 挂载配置文件到 /app/config.yaml
+        - name: config-volume
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+        # 挂载 TLS 证书到 /app/certs/ 目录
+        - name: tls-volume
+          mountPath: /app/certs
+          readOnly: true
+      # 卷定义
+      volumes:
+      # 引用上面定义的 ConfigMap
+      - name: config-volume
+        configMap:
+          name: alertmanager-agent-config
+      # 引用存放 gRPC 证书的 Secret（需确保存储证书的 Secret 已存在）
+      - name: tls-volume
+        secret:
+          secretName: grpc-client-tls
+---
+apiVersion: v1
+data:
+  ca.crt: base64
+  client.crt: base64
+  client.key: base64
+kind: Secret
+metadata:
+  name: grpc-client-tls
+  namespace: monitoring

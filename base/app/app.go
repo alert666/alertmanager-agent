@@ -15,9 +15,9 @@ type Application struct {
 }
 
 // NewApplication creates an Application with the given agent.
-func NewApplication(agent server.ServerInterface) *Application {
+func NewApplication(servers []server.ServerInterface) *Application {
 	return &Application{
-		servers: []server.ServerInterface{agent},
+		servers: servers,
 		wg:      &sync.WaitGroup{},
 	}
 }

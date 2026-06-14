@@ -8,7 +8,9 @@ package infra
 
 import (
 	"github.com/alert666/alertmanager-agent/base/app"
+	"github.com/alert666/alertmanager-agent/base/server"
 	"github.com/alert666/alertmanager-agent/pkg/agent"
+	"github.com/alert666/alertmanager-agent/pkg/health"
 	"github.com/alert666/alertmanager-agent/pkg/kube"
 )
 
@@ -24,7 +26,20 @@ func InitApplication() (*app.Application, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	application := app.NewApplication(agentAgent)
+	server, err := health.ProvideHealthServer(agentAgent)
+	if err != nil {
+		return nil, nil, err
+	}
+	v := provideServers(agentAgent, server)
+	application := app.NewApplication(v)
 	return application, func() {
 	}, nil
+}
+
+// wire.go:
+
+// provideServers collects all ServerInterface implementations into a slice
+// so Application can run them both.
+func provideServers(agent2 *agent.Agent, healthSrv *health.Server) []server.ServerInterface {
+	return []server.ServerInterface{agent2, healthSrv}
 }
