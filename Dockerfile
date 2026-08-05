@@ -1,5 +1,5 @@
-ARG GO_VERSION=1.26.4
-FROM registry.cn-beijing.aliyuncs.com/qqlx/golang:${GO_VERSION}-alpine-otel AS builder
+ARG GO_VERSION=1.26.5
+FROM golang:${GO_VERSION}-alpine AS builder
 
 ARG MAIN_PATH=main.go
 WORKDIR /app
@@ -10,7 +10,6 @@ COPY go.mod go.sum ./
 # ✅ 缓存依赖目录，加速 go mod download
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    export GOPROXY=https://goproxy.cn,direct && \
     go mod download
 
 # 再复制全部代码
@@ -19,10 +18,9 @@ COPY . .
 # ✅ 构建可复用缓存的构建命令
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    export GOPROXY=https://goproxy.cn,direct && \
-    otel go build -o alertmanager-agent -ldflags="-s -w" ${MAIN_PATH}
+    go build -o alertmanager-agent -ldflags="-s -w" ${MAIN_PATH}
 
-FROM registry.cn-beijing.aliyuncs.com/qqlx/alpine:3.17
+FROM alpine:3.23.5
 WORKDIR /app
 COPY --from=builder /app/alertmanager-agent .
 ENTRYPOINT ["./alertmanager-agent"]
