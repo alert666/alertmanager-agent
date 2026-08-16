@@ -5,7 +5,6 @@
     keyFile: D:\Data\git\alert666\alertmanager-agent\certs\client.key
 
 log:
-  # encoder: console
   encoder: json
   level: debug
 

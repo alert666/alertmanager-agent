@@ -1,0 +1,6 @@
+{
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#229898", // 活动窗口标题栏背景
+    "titleBar.activeForeground": "#ffffff" // 活动窗口标题栏文字
+  }
+}
