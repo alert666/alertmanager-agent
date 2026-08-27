@@ -13,20 +13,22 @@ import (
 	"github.com/alert666/alertmanager-agent/base/conf"
 	"github.com/alert666/alertmanager-agent/pkg/kube"
 	v1 "github.com/alert666/alertmanager-proto/gen/go/data_tunnel/v1"
+	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-		"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
 // Agent is the gRPC client that registers with the api-server via a data tunnel.
 type Agent struct {
-	conn   *grpc.ClientConn
-	stream v1.TunnelService_DataTunnelClient
-	cancel context.CancelFunc
-	kube   kube.Interface
+	prometheusAddress string
+	conn              *grpc.ClientConn
+	stream            v1.TunnelService_DataTunnelClient
+	cancel            context.CancelFunc
+	kube              kube.Interface
 }
 
 // NewAgent creates a new Agent and initiates the data tunnel registration.
@@ -53,8 +55,9 @@ func NewAgent(kc kube.Interface) (*Agent, error) {
 	// 构建传输凭证：有客户端证书则 mTLS，否则明文
 	creds := loadTransportCredentials()
 
-	conn, err := grpc.NewClient(serverAddr,
-				grpc.WithTransportCredentials(creds),
+	conn, err := grpc.NewClient(
+		serverAddr,
+		grpc.WithTransportCredentials(creds),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                20 * time.Second,
 			Timeout:             5 * time.Second,
@@ -96,12 +99,13 @@ func NewAgent(kc kube.Interface) (*Agent, error) {
 		zap.String("agentId", agentID),
 		zap.String("serverAddr", serverAddr),
 	)
-
+	prometheusAddress := fmt.Sprintf("http://%v/-/healthy", conf.GetPrometheusAddress())
 	return &Agent{
-		conn:   conn,
-		stream: stream,
-		cancel: cancel,
-		kube:   kc,
+		prometheusAddress: prometheusAddress,
+		conn:              conn,
+		stream:            stream,
+		cancel:            cancel,
+		kube:              kc,
 	}, nil
 }
 
@@ -166,19 +170,19 @@ func (a *Agent) Start() error {
 
 		if cmd := msg.GetCommand(); cmd != nil {
 			zap.L().Info("received command",
-				zap.String("taskID", msg.GetTaskId()),
+				zap.String("taskID", msg.GetTaskID()),
 				zap.Int32("commandType", int32(cmd.GetType())),
 			)
-			result := a.handleCommand(cmd, msg.GetTaskId())
+			result := a.handleCommand(cmd, msg.GetTaskID())
 			resultMsg := &v1.TunnelMessage{
-				TaskId: msg.GetTaskId(),
+				TaskID: msg.GetTaskID(),
 				Payload: &v1.TunnelMessage_CommandResult{
 					CommandResult: result,
 				},
 			}
 			if err := a.stream.Send(resultMsg); err != nil {
 				zap.L().Info("failed to send command result",
-					zap.String("taskID", msg.GetTaskId()),
+					zap.String("taskID", msg.GetTaskID()),
 					zap.Int32("commandType", int32(cmd.GetType())),
 					zap.Error(err),
 				)
@@ -222,6 +226,8 @@ func (a *Agent) handleCommand(cmd *v1.Command, taskID string) *v1.CommandResult 
 		return a.handleReloadPrometheus(cmd)
 	case v1.CommandType_COMMAND_TYPE_UPDATE_ALERTMANAGER_CONFIG:
 		return a.handleUpdateAlertmanagerConfig(cmd, taskID)
+	case v1.CommandType_COMMAND_TYPE_PROMETHEUS_PROBE:
+		return a.handlePrometheusProbe(cmd, taskID)
 	default:
 		return &v1.CommandResult{
 			CommandType: cmd.GetType(),
@@ -306,4 +312,33 @@ func (a *Agent) handleGetPrometheusConfig(cmd *v1.Command) *v1.CommandResult {
 	}
 }
 
+func (a *Agent) handlePrometheusProbe(cmd *v1.Command, taskID string) *v1.CommandResult {
+	res, err := resty.
+		New().
+		SetTimeout(time.Second * 10).
+		R().
+		Get(a.prometheusAddress)
+	if err != nil {
+		return &v1.CommandResult{
+			CommandType: cmd.GetType(),
+			Error:       fmt.Sprintf("prometheus 健康探测失败, %v", err),
+		}
+	}
 
+	if res.StatusCode() != 200 {
+		zap.L().Error(
+			"prometheus 健康探测失败",
+			zap.Int("statusCode", res.StatusCode()),
+			zap.String("res", string(res.Body())),
+		)
+		return &v1.CommandResult{
+			CommandType: cmd.GetType(),
+			Error:       fmt.Sprintf("prometheus 健康探测失败, statusCode: %v", res.StatusCode()),
+		}
+	}
+
+	return &v1.CommandResult{
+		CommandType: cmd.GetType(),
+		Data:        []byte("ok"),
+	}
+}

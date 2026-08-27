@@ -15,8 +15,8 @@ const (
 	defaultLogEncoder = "console"
 )
 
-	// LoadConfig loads configuration from the given YAML file path.
-	func LoadConfig(configPath string) error {
+// LoadConfig loads configuration from the given YAML file path.
+func LoadConfig(configPath string) error {
 	_, err := os.Stat(configPath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("configuration file %s does not exist", configPath)
@@ -101,6 +101,14 @@ func GetKubeNamespace() string {
 		ns = "monitoring"
 	}
 	return ns
+}
+
+func GetPrometheusAddress() string {
+	address := viper.GetString("kube.prometheusAddress")
+	if address == "" {
+		address = "prometheus-k8s.monitoring.svc.cluster.local:9090"
+	}
+	return address
 }
 
 // GetAlertmanagerSecretName returns the name of the Kubernetes Secret

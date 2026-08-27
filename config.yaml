@@ -21,4 +21,6 @@ kube:
   namespace: "monitoring"
   # Name of the Kubernetes Secret that stores the alertmanager configuration.
   alertmanagerSecretName: "alertmanager-main"
+  # Prometheus svc 地址
+  prometheusAddress: "prometheus-k8s.monitoring.svc.cluster.local:9090"
 
