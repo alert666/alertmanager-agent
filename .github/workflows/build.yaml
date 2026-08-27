@@ -64,6 +64,8 @@ jobs:
             GO_VERSION=1.26.5
             MAIN_PATH=main.go
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ vars.DOCKER_HUB }}/qqlx/alertmanager-agent:${{ steps.vars.outputs.IMAGE_TAG }}
             privateharbor.suanleme.cn/k8s/alertmanager-agent:${{ steps.vars.outputs.IMAGE_TAG }}
