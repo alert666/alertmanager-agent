@@ -247,10 +247,13 @@ func (a *Agent) handleGetAlertmanagerConfig(cmd *v1.Command, taskID string) *v1.
 			Error:       fmt.Sprintf("failed to get alertmanager config: %v", err),
 		}
 	}
-	return &v1.CommandResult{
+	res := &v1.CommandResult{
 		CommandType: cmd.GetType(),
 		Data:        data,
 	}
+
+	zap.L().Info("GetAlertmanagerConfig 成功", zap.Any("res", res))
+	return res
 }
 
 func (a *Agent) handleReloadAlertmanager(cmd *v1.Command) *v1.CommandResult {
@@ -319,6 +322,7 @@ func (a *Agent) handlePrometheusProbe(cmd *v1.Command, taskID string) *v1.Comman
 		R().
 		Get(a.prometheusAddress)
 	if err != nil {
+		zap.L().Error("prometheus 健康探测失败", zap.String("taskID", taskID), zap.Error(err))
 		return &v1.CommandResult{
 			CommandType: cmd.GetType(),
 			Error:       fmt.Sprintf("prometheus 健康探测失败, %v", err),
@@ -337,8 +341,11 @@ func (a *Agent) handlePrometheusProbe(cmd *v1.Command, taskID string) *v1.Comman
 		}
 	}
 
-	return &v1.CommandResult{
+	rs := &v1.CommandResult{
 		CommandType: cmd.GetType(),
 		Data:        []byte("ok"),
 	}
+
+	zap.L().Info("prometheus 健康探测成功", zap.Any("res", rs))
+	return rs
 }
