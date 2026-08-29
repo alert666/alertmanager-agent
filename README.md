@@ -13,9 +13,18 @@
 - **配置灵活**：YAML + 环境变量 + 命令行参数（viper + cobra）。
 - **依赖注入**：Google Wire 组装依赖图；**结构化日志**：zap（json / console）。
 
+### clusterProbe
+
+执行服务端发来的健康探测并返回结果
+
+```go
+// CommandType_COMMAND_TYPE_PROBE
+func (a *Agent) handleClusterProbe(cmd *v1.Command, taskID string) *v1.CommandResult {}
+```
+
 ## 目录结构
 
-```
+```bash
 ├── main.go            # 入口
 ├── base/              # app / conf / log / server 等基础组件
 ├── internal/infra/    # cobra 命令与 wire 注入
@@ -42,26 +51,26 @@ go build -o alertmanager-agent ./main.go
 
 命令行参数：
 
-| 参数 | 简写 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--config-path` | `-c` | `./config.yaml` | 配置文件路径 |
-| `--log-level` | `-l` | `info` | 日志级别（debug/info/warn/error） |
+| 参数            | 简写 | 默认值          | 说明                              |
+| --------------- | ---- | --------------- | --------------------------------- |
+| `--config-path` | `-c` | `./config.yaml` | 配置文件路径                      |
+| `--log-level`   | `-l` | `info`          | 日志级别（debug/info/warn/error） |
 
 ## 配置
 
 示例见 [`config.yaml`](config.yaml)：
 
-| 配置键 | 说明 |
-|--------|------|
-| `grpc.tls.caFile` / `certFile` / `keyFile` | gRPC mTLS 证书路径；留空则明文连接 |
-| `log.encoder` / `log.level` | 日志编码（json/console）与级别 |
-| `timeZone` | 时区（默认 `Asia/Shanghai`） |
-| `agent.serverAddr` | api-server gRPC 地址 |
-| `agent.agentID` | Agent 唯一标识（默认取 hostname） |
-| `agent.clusterID` | 所属集群标识 |
-| `agent.healthPort` | 健康检查端口（默认 9090） |
-| `kube.namespace` | Alertmanager 资源所在命名空间 |
-| `kube.alertmanagerSecretName` | 存储 `alertmanager.yaml` 的 Secret 名称 |
+| 配置键                                     | 说明                                    |
+| ------------------------------------------ | --------------------------------------- |
+| `grpc.tls.caFile` / `certFile` / `keyFile` | gRPC mTLS 证书路径；留空则明文连接      |
+| `log.encoder` / `log.level`                | 日志编码（json/console）与级别          |
+| `timeZone`                                 | 时区（默认 `Asia/Shanghai`）            |
+| `agent.serverAddr`                         | api-server gRPC 地址                    |
+| `agent.agentID`                            | Agent 唯一标识（默认取 hostname）       |
+| `agent.clusterID`                          | 所属集群标识                            |
+| `agent.healthPort`                         | 健康检查端口（默认 9090）               |
+| `kube.namespace`                           | Alertmanager 资源所在命名空间           |
+| `kube.alertmanagerSecretName`              | 存储 `alertmanager.yaml` 的 Secret 名称 |
 
 配置项可通过环境变量覆盖：默认前缀 `ALERTMANAGER_AGENT`，键名中 `.` 转为 `_`，例如 `agent.clusterID` → `ALERTMANAGER_AGENT_AGENT_CLUSTERID`（前缀可由 `SERVICE_NAME` 改变）。
 

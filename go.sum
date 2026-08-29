@@ -1,5 +1,5 @@
-github.com/alert666/alertmanager-proto v0.0.6 h1:SedyXOesUcQjHUrpg0ODo8mp4rwq2zzlnwGVrJkycc8=
-github.com/alert666/alertmanager-proto v0.0.6/go.mod h1:vFz1tpH9Di+e1J6EQetcnAkoODBm0IWTm5OF2J8RZfY=
+github.com/alert666/alertmanager-proto v0.0.7 h1:CT+VsP5E53VOmD2kKw/xpFQ8rqQz1qjERtS0uP8D+KE=
+github.com/alert666/alertmanager-proto v0.0.7/go.mod h1:vFz1tpH9Di+e1J6EQetcnAkoODBm0IWTm5OF2J8RZfY=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=

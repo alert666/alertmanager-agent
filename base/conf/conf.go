@@ -103,14 +103,6 @@ func GetKubeNamespace() string {
 	return ns
 }
 
-func GetPrometheusAddress() string {
-	address := viper.GetString("kube.prometheusAddress")
-	if address == "" {
-		address = "prometheus-k8s.monitoring.svc.cluster.local:9090"
-	}
-	return address
-}
-
 // GetAlertmanagerSecretName returns the name of the Kubernetes Secret
 // that holds the alertmanager configuration (alertmanager.yaml).
 func GetAlertmanagerSecretName() string {

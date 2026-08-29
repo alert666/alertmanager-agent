@@ -24,11 +24,10 @@ import (
 
 // Agent is the gRPC client that registers with the api-server via a data tunnel.
 type Agent struct {
-	prometheusAddress string
-	conn              *grpc.ClientConn
-	stream            v1.TunnelService_DataTunnelClient
-	cancel            context.CancelFunc
-	kube              kube.Interface
+	conn   *grpc.ClientConn
+	stream v1.TunnelService_DataTunnelClient
+	cancel context.CancelFunc
+	kube   kube.Interface
 }
 
 // NewAgent creates a new Agent and initiates the data tunnel registration.
@@ -99,13 +98,12 @@ func NewAgent(kc kube.Interface) (*Agent, error) {
 		zap.String("agentId", agentID),
 		zap.String("serverAddr", serverAddr),
 	)
-	prometheusAddress := fmt.Sprintf("http://%v/-/healthy", conf.GetPrometheusAddress())
+
 	return &Agent{
-		prometheusAddress: prometheusAddress,
-		conn:              conn,
-		stream:            stream,
-		cancel:            cancel,
-		kube:              kc,
+		conn:   conn,
+		stream: stream,
+		cancel: cancel,
+		kube:   kc,
 	}, nil
 }
 
@@ -226,8 +224,8 @@ func (a *Agent) handleCommand(cmd *v1.Command, taskID string) *v1.CommandResult 
 		return a.handleReloadPrometheus(cmd)
 	case v1.CommandType_COMMAND_TYPE_UPDATE_ALERTMANAGER_CONFIG:
 		return a.handleUpdateAlertmanagerConfig(cmd, taskID)
-	case v1.CommandType_COMMAND_TYPE_PROMETHEUS_PROBE:
-		return a.handlePrometheusProbe(cmd, taskID)
+	case v1.CommandType_COMMAND_TYPE_PROBE:
+		return a.handleClusterProbe(cmd, taskID)
 	default:
 		return &v1.CommandResult{
 			CommandType: cmd.GetType(),
@@ -315,29 +313,48 @@ func (a *Agent) handleGetPrometheusConfig(cmd *v1.Command) *v1.CommandResult {
 	}
 }
 
-func (a *Agent) handlePrometheusProbe(cmd *v1.Command, taskID string) *v1.CommandResult {
+func (a *Agent) handleClusterProbe(cmd *v1.Command, taskID string) *v1.CommandResult {
+	if cmd.Params == nil {
+		zap.L().Error("missing command params", zap.String("taskID", taskID), zap.Any("cmd", cmd))
+		return &v1.CommandResult{
+			CommandType: cmd.GetType(),
+			Error:       "missing command params",
+		}
+	}
+
+	probeEndpoint, ok := cmd.Params["probeEndpoint"]
+	if !ok {
+		zap.L().Error("missing probeEndpoint in command params", zap.String("taskID", taskID), zap.Any("cmd", cmd))
+		return &v1.CommandResult{
+			CommandType: cmd.GetType(),
+			Error:       "missing probeEndpoint in command params",
+		}
+	}
+
 	res, err := resty.
 		New().
 		SetTimeout(time.Second * 10).
 		R().
-		Get(a.prometheusAddress)
+		Get(probeEndpoint)
 	if err != nil {
-		zap.L().Error("prometheus 健康探测失败", zap.String("taskID", taskID), zap.Error(err))
+		zap.L().Error("cluster 健康探测失败", zap.String("taskID", taskID), zap.Any("cmd", cmd), zap.Error(err))
 		return &v1.CommandResult{
 			CommandType: cmd.GetType(),
-			Error:       fmt.Sprintf("prometheus 健康探测失败, %v", err),
+			Error:       fmt.Sprintf("cluster 健康探测失败, %v", err),
 		}
 	}
 
 	if res.StatusCode() != 200 {
 		zap.L().Error(
-			"prometheus 健康探测失败",
+			"cluster 健康探测失败",
+			zap.String("taskID", taskID),
+			zap.Any("cmd", cmd),
 			zap.Int("statusCode", res.StatusCode()),
 			zap.String("res", string(res.Body())),
 		)
 		return &v1.CommandResult{
 			CommandType: cmd.GetType(),
-			Error:       fmt.Sprintf("prometheus 健康探测失败, statusCode: %v", res.StatusCode()),
+			Error:       fmt.Sprintf("cluster 健康探测失败, statusCode: %v", res.StatusCode()),
 		}
 	}
 
@@ -346,6 +363,6 @@ func (a *Agent) handlePrometheusProbe(cmd *v1.Command, taskID string) *v1.Comman
 		Data:        []byte("ok"),
 	}
 
-	zap.L().Info("prometheus 健康探测成功", zap.Any("res", rs))
+	zap.L().Info("cluster 健康探测成功", zap.String("taskID", taskID), zap.Any("cmd", cmd), zap.Any("res", rs))
 	return rs
 }
